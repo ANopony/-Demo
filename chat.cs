@@ -4,6 +4,7 @@ using System.IO;
 using System.Net.Http;
 using System.Threading.Tasks;
 
+// chat类
 class Chat
 {
     static async Task Main()
