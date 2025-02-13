@@ -1,10 +1,16 @@
-// 从hello world开始
 using System;
-class HelloWorld
+using System.Windows.Forms;
+
+namespace AIChatApp
 {
-    static void Main()
+    static class Program
     {
-        Console.WriteLine("Hello, World!");
+        [STAThread]
+        static void Main()
+        {
+            Application.EnableVisualStyles();
+            Application.SetCompatibleTextRenderingDefault(false);
+            Application.Run(new Form1());
+        }
     }
 }
-
