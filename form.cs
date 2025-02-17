@@ -1,10 +1,12 @@
 using System;
+using System.Data.SQLite;
 using System.IO;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 public partial class Form1 : Form
 {
@@ -17,6 +19,7 @@ public partial class Form1 : Form
     public Form1()
     {
         InitializeChatUI();
+        InitializeDatabase();
     }
 
     private void InitializeChatUI()
@@ -62,6 +65,25 @@ public partial class Form1 : Form
         this.Controls.Add(this.uploadButton);
     }
 
+    private void InitializeDatabase()
+    {
+        string connectionString = "Data Source=embedding.db;Version=3;";
+        using (var connection = new SQLiteConnection(connectionString))
+        {
+            connection.Open();
+            string createTableQuery = @"
+                CREATE TABLE IF NOT EXISTS Embeddings (
+                    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    FilePath TEXT,
+                    Embedding TEXT
+                )";
+            using (var command = new SQLiteCommand(createTableQuery, connection))
+            {
+                command.ExecuteNonQuery();
+            }
+        }
+    }
+
     private async void SendButton_Click(object sender, EventArgs e)
     {
         var userInput = this.inputTextBox.Text;
@@ -86,24 +108,51 @@ public partial class Form1 : Form
             var embeddingResponse = await GetEmbedding(fileContent);
             this.outputTextBox.AppendText($"文件已上传并处理：{filePath}\r\n");
             this.outputTextBox.AppendText($"Embedding结果：{embeddingResponse}\r\n");
+
+            SaveEmbeddingToDatabase(filePath, embeddingResponse);
         }
     }
 
     private async Task<string> GetAIResponse(string question)
     {
         var client = new HttpClient();
-        var apiUrl = "https://localhost:11434/api/chat"; // 替换为实际的API URL
-        var apiKey = "your-api-key"; // 替换为实际的API密钥
+        var apiUrl = "http://10.3.74.124:11434/api/chat"; // 使用HTTP而不是HTTPS
 
         var requestPayload = new
         {
-            question = question
+            model = "qwen2:1.5b", // 替换为实际的模型名称
+            messages = new[]
+            {
+                new { role = "user", content = question }
+            },
+            stream = false
         };
 
         var jsonPayload = JsonConvert.SerializeObject(requestPayload);
         var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
 
-        client.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
+        var response = await client.PostAsync(apiUrl, content);
+        var responseString = await response.Content.ReadAsStringAsync();
+
+        var responseJson = JObject.Parse(responseString);
+        var contentField = responseJson["message"]?["content"]?.ToString();
+
+        return contentField ?? "未能获取到AI的回答";
+    }
+
+    private async Task<string> GetEmbedding(string text)
+    {
+        var client = new HttpClient();
+        var apiUrl = "http://10.3.74.124:11434/api/embed"; // 替换为实际的API URL
+
+        var requestPayload = new
+        {
+            model = "quentinz/bge-embedding-768",
+            input = text
+        };
+
+        var jsonPayload = JsonConvert.SerializeObject(requestPayload);
+        var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
 
         var response = await client.PostAsync(apiUrl, content);
         var responseString = await response.Content.ReadAsStringAsync();
@@ -111,25 +160,19 @@ public partial class Form1 : Form
         return responseString;
     }
 
-    private async Task<string> GetEmbedding(string text)
+    private void SaveEmbeddingToDatabase(string filePath, string embedding)
     {
-        var client = new HttpClient();
-        var apiUrl = "https://api.example.com/embedding"; // 替换为实际的API URL
-        var apiKey = "your-api-key"; // 替换为实际的API密钥
-
-        var requestPayload = new
+        string connectionString = "Data Source=embedding.db;Version=3;";
+        using (var connection = new SQLiteConnection(connectionString))
         {
-            text = text
-        };
-
-        var jsonPayload = JsonConvert.SerializeObject(requestPayload);
-        var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
-
-        client.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
-
-        var response = await client.PostAsync(apiUrl, content);
-        var responseString = await response.Content.ReadAsStringAsync();
-
-        return responseString;
+            connection.Open();
+            string insertQuery = "INSERT INTO Embeddings (FilePath, Embedding) VALUES (@FilePath, @Embedding)";
+            using (var command = new SQLiteCommand(insertQuery, connection))
+            {
+                command.Parameters.AddWithValue("@FilePath", filePath);
+                command.Parameters.AddWithValue("@Embedding", embedding);
+                command.ExecuteNonQuery();
+            }
+        }
     }
 }
