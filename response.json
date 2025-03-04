@@ -1,0 +1,36 @@
+{
+    "business_code": 20000,
+    "message": "[Service]: service interface call success",
+    "data": [
+        {
+            "provider_name": "local_ollama_chat",
+            "service_name": "chat",
+            "service_source": "local",
+            "desc": "",
+            "auth_type": "none",
+            "auth_key": "",
+            "flavor": "ollama",
+            "properties": "{\"max_input_tokens\":2048,\"supported_response_mode\":[\"stream\",\"sync\"],\"mode_is_changeable\":true,\"xpu\":[\"GPU\"]}",
+            "models": [
+                "qwen2:0.5b"
+            ],
+            "status": 1,
+            "created_at": "2025-02-25T03:21:34Z",
+            "updated_at": "2025-02-25T03:21:34Z"
+        },
+        {
+            "provider_name": "local_ollama_models",
+            "service_name": "models",
+            "service_source": "local",
+            "desc": "",
+            "auth_type": "none",
+            "auth_key": "",
+            "flavor": "ollama",
+            "properties": "{}",
+            "models": null,
+            "status": 1,
+            "created_at": "2025-02-25T03:21:34Z",
+            "updated_at": "2025-02-25T03:21:34Z"
+        }
+    ]
+}
